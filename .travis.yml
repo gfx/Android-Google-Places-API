@@ -1,0 +1,10 @@
+language: java
+before_install:
+  # download the latest android sdk and unzip
+  - wget http://dl.google.com/android/android-sdk_r19-linux.tgz
+  - tar -zxf android-sdk_r19-linux.tgz
+  - export ANDROID_HOME=`pwd`/android-sdk-linux
+  - export PATH=${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools:${PATH}
+  # only update the sdk for the tools and platform-tools (1,2) and whatever api level
+  - android list sdk
+  - android update sdk --no-ui --force
