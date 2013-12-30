@@ -1,6 +1,6 @@
 ext.writeProperties = { propertiesFile, dict ->
     def s = ""
-    dic.each { key, value ->
+    dict.each { key, value ->
         s += "$key=$value\n"
     }
     logger.info("writing $propertiesFile")

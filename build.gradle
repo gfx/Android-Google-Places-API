@@ -23,3 +23,10 @@ project.ext {
 }
 
 initSdkDir();
+
+if (! project.file("gradle.properties").exists()) {
+    writeProperties(project.file("gradle.properties"), [ "GoogleApiKey" : "YOUR_API_KEY_HERE" ])
+    project.ext {
+        GoogleApiKey = "YOUR_API_KEY_HERE"
+    }
+}
