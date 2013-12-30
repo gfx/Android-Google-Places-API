@@ -1,16 +1,4 @@
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:0.7.+'
-    }
-}
 apply plugin: 'android-library'
-
-repositories {
-    mavenCentral()
-}
 
 android {
     compileSdkVersion 19
@@ -34,5 +22,12 @@ android {
 }
 
 dependencies {
-    compile 'com.android.support:appcompat-v7:+'
+    compile "com.google.android.gms:play-services:$playServicesVersion"
+    compile "com.android.support:appcompat-v7:$supportPackageVersion"
+    compile "com.google.api-client:google-api-client-android:$googleApiClientVersion"
 }
+
+if (! project.hasProperty('GoogleApiKey')) {
+    throw new StopActionException("GoogleApiKey must be defined in gradle.properties");
+}
+initApiKeys(project, ["google_api_key" : GoogleApiKey])

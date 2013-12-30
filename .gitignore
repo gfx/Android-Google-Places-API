@@ -1,4 +1,10 @@
+*.swp
+*~
 .gradle
 /local.properties
+/gradle.properties
 /.idea/workspace.xml
 .DS_Store
+
+# generated XML files (e.g. _api_keys.xml)
+_*.xml

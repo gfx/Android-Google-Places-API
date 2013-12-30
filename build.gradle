@@ -1,1 +1,25 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
+apply from: rootProject.file('gradle/util.gradle')
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:0.7.+"
+    }
+}
+
+subprojects {
+    repositories {
+        mavenCentral()
+    }
+}
+
+project.ext {
+    supportPackageVersion = "19.0.0"
+    playServicesVersion = "4.0.30"
+    googleApiClientVersion = "1.17.0-rc"
+}
+
+initSdkDir();

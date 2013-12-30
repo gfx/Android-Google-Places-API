@@ -1,0 +1,41 @@
+ext.writeProperties = { propertiesFile, dict ->
+    def s = ""
+    dic.each { key, value ->
+        s += "$key=$value\n"
+    }
+    logger.info("writing $propertiesFile")
+    propertiesFile.write(s)
+}
+
+
+ext.initSdkDir = {
+    def localPropFile = file("local.properties")
+
+    if (! localPropFile.exists()) {
+        [
+            System.getenv("ANDROID_HOME"),
+            System.getenv("ANDROID_SDK"),
+            "/usr/local/opt/android-sdk",
+            "/Applications/Android Studio/sdk"
+        ].each { dir ->
+            if (dir != null && file(dir).exists()) {
+                writeProperties(localPropFile, ["sdk.dir" : $dir])
+                return;
+            }
+        }
+    }
+}
+
+ext.initApiKeys = { project, dict ->
+    def s = ""
+    s += """<?xml version="1.0" encoding="utf-8"?>\n<resources>\n"""
+    dict.each { key, value ->
+        s += """<string name="$key">$value</string>\n"""
+    }
+    s += """</resources>\n"""
+
+    def file = project.file("src/main/res/values/_api_keys.xml")
+    logger.info("writing $file")
+    file.write(s)
+}
+
