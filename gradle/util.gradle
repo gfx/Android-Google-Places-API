@@ -19,7 +19,7 @@ ext.initSdkDir = {
             "/Applications/Android Studio/sdk"
         ].each { dir ->
             if (dir != null && file(dir).exists()) {
-                writeProperties(localPropFile, ["sdk.dir" : $dir])
+                writeProperties(localPropFile, ["sdk.dir" : dir])
                 return;
             }
         }
