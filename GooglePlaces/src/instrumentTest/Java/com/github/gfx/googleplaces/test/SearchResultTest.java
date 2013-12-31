@@ -30,6 +30,8 @@ public class SearchResultTest extends AndroidTestCase {
             id = R.raw.nearbysearch;
         } else if (url.contains("/textsearch/")) {
             id = R.raw.textsearch;
+        } else if (url.contains("/radarsearch/")) {
+            id = R.raw.radarsearch;
         } else {
             throw new RuntimeException("Unexpected url:" + url);
         }
@@ -109,7 +111,29 @@ public class SearchResultTest extends AndroidTestCase {
                 @Override
                 public void onComplete(SearchResult placeList) {
                     assertNotNull(placeList);
-                    assertEquals(20, placeList.size());
+                    assertEquals(4, placeList.size());
+
+                    latch.countDown();
+                }
+            });
+
+        boolean timedOut = latch.await(10, TimeUnit.SECONDS);
+        assertTrue("textSearch calls its callback", timedOut);
+    }
+
+    public void testRadarSearch() throws InterruptedException {
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        client.radarSearchBuilder(0, 0, 100, false)
+            .setOpenNow(true)
+            .setLanguage("ja")
+            .setMinPrice(0)
+            .setMaxPrice(4)
+            .get(new GooglePlaces.ResultListener<SearchResult>() {
+                @Override
+                public void onComplete(SearchResult placeList) {
+                    assertNotNull(placeList);
+                    assertEquals(200, placeList.size());
 
                     latch.countDown();
                 }

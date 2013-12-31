@@ -135,7 +135,7 @@ public class GooglePlaces {
                     try {
                         return (ResultType) GooglePlaces.this.get(url).parseAs(getResultTypeClass());
                     } catch (Exception e) {
-                        return createErrorResult(new RequestError("Failed to request " + url.getFragment(), e));
+                        return createErrorResult(new RequestError("Failed to request " + url.getRawPath(), e));
                     }
                 }
 
@@ -221,12 +221,46 @@ public class GooglePlaces {
     }
 
 
+    public class RadarSearchBuilder extends SearchBuilderBase<RadarSearchBuilder, SearchResult> {
+        /**
+         * Creates a request builder for "radar search". Its parameters are mandatory.
+         */
+        public RadarSearchBuilder(double latitude, double longitude,  double radiusInMeter, boolean sensor) {
+            super(new GenericUrl(apiBase + RADAR_SEARCH_PATH));
+
+            url.put("location", latitude + "," + longitude);
+            url.put("radius", radiusInMeter);
+            url.put("sensor", sensor);
+        }
+
+        public RadarSearchBuilder setKeyword(String keyword) {
+            url.put("keyword", keyword);
+            return this;
+        }
+
+        @Override
+        protected Class<?> getResultTypeClass() {
+            return SearchResult.class;
+        }
+
+        @Override
+        protected SearchResult createErrorResult(RequestError error) {
+            SearchResult errorResult = new SearchResult();
+            errorResult.setError(error);
+            return errorResult;
+        }
+    }
+
     public NearbySearchBuilder nearBySearch(double latitude, double longitude, double radiusInMeter, boolean sensor) {
         return new NearbySearchBuilder(latitude, longitude, radiusInMeter, sensor);
     }
 
     public TextSearchBuilder textSearchBuilder(String query, boolean sensor) {
         return new TextSearchBuilder(query, sensor);
+    }
+
+    public RadarSearchBuilder radarSearchBuilder(double latitude, double longitude, double radiusInMeter, boolean sensor) {
+        return new RadarSearchBuilder(latitude, longitude, radiusInMeter, sensor);
     }
 
     private HttpResponse get(GenericUrl url) throws IOException {
