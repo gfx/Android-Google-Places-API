@@ -19,6 +19,13 @@ android {
         runProguard false
         proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
     }
+
+    sourceSets {
+        instrumentTest {
+            java.srcDirs = ['src/InstrumentTest/java']
+            res.srcDirs = ['src/InstrumentTest/res']
+        }
+    }
 }
 
 dependencies {
@@ -27,7 +34,7 @@ dependencies {
     compile "com.google.api-client:google-api-client-android:$googleApiClientVersion"
 }
 
-if (! project.hasProperty('GoogleApiKey')) {
+if (!project.hasProperty('GoogleApiKey')) {
     throw new StopActionException("GoogleApiKey must be defined in gradle.properties");
 }
-initApiKeys(project, ["google_api_key" : GoogleApiKey])
+initApiKeys(project, ["google_api_key": GoogleApiKey])

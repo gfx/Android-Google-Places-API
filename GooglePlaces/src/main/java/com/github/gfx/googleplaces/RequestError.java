@@ -11,12 +11,16 @@ public class RequestError extends Exception {
         this.parent = parent;
     }
 
+    public Throwable getParent() {
+        return parent;
+    }
+
     @Override
     public String toString() {
-        String stackTrace = Log.getStackTraceString(this);
+        String message = reason;
         if (parent != null) {
-            stackTrace += Log.getStackTraceString(parent);
+            message += ": " + Log.getStackTraceString(parent);
         }
-        return String.format("RequestError: %s\n%s", reason, stackTrace);
+        return String.format("RequestError: %s\n%s", reason, message);
     }
 }

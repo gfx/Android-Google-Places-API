@@ -1,5 +1,8 @@
 package com.github.gfx.googleplaces;
 
+import android.os.AsyncTask;
+import android.text.TextUtils;
+
 import com.google.api.client.extensions.android.json.AndroidJsonFactory;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpHeaders;
@@ -10,11 +13,8 @@ import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonObjectParser;
-import com.google.api.client.util.Key;
 
 import java.io.IOException;
-import java.io.Serializable;
-import java.util.List;
 
 /**
  * @see <a href="https://developers.google.com/places/documentation/search">Google Places API</a>
@@ -24,7 +24,7 @@ public class GooglePlaces {
     // See https://developers.google.com/places/documentation/search for details
     private static final String API_BASE = "https://maps.googleapis.com/maps/api/place";
     private static final String NEARBY_SEARCH_PATH = "/nearbysearch/json?";
-    private static final String RADER_SEARCH_PATH = "/radersearch/json?";
+    private static final String RADAR_SEARCH_PATH = "/radarsearch/json?";
     private static final String TEXT_SEARCH_PATH = "/textsearch/json?";
     private static final String DETAILS_PATH = "/details/json?";
 
@@ -53,18 +53,180 @@ public class GooglePlaces {
         });
     }
 
-    public PlaceList nearBySearch(double latitude, double longitude, double radiusInMeter, boolean sensor) throws RequestError {
-        final GenericUrl url = new GenericUrl(apiBase + NEARBY_SEARCH_PATH);
-        url.put("location", latitude + "," + longitude);
-        url.put("radius", radiusInMeter);
-        url.put("sensor", sensor);
 
+    private abstract class SearchBuilderBase<Derived extends SearchBuilderBase, ResultType extends ResultBase> {
+        protected final GenericUrl url;
 
-        try {
-            return get(url).parseAs(PlaceList.class);
-        } catch (IOException e) {
-            throw new RequestError("Failed to nearBySearch", e);
+        protected ErrorListener errorListener = DefaultErrorListener.getInstance();
+
+        SearchBuilderBase(GenericUrl url) {
+            this.url = url;
         }
+
+        public Derived setLanguage(String language) {
+            url.put("language", language);
+            return (Derived) this;
+        }
+
+        public Derived setMinPrice(int minPrice) {
+            assert 0 <= minPrice && minPrice <= 4;
+            url.put("mminprice", minPrice);
+            return (Derived) this;
+        }
+
+        public Derived setMaxPrice(int maxPrice) {
+            assert 0 <= maxPrice && maxPrice <= 4;
+            url.put("maxprice", maxPrice);
+            return (Derived) this;
+        }
+
+
+        /**
+         * One or more terms to be matched against the names of Places, separated with a space character. Results will be restricted to those containing the passed name values. Note that a Place may have additional names associated with it, beyond its listed name. The API will try to match the passed name value against all of these names; as a result, Places may be returned in the results whose listed names do not match the search term, but whose associated names do.
+         */
+        public Derived setName(String name) {
+            url.put("name", name);
+            return (Derived) this;
+        }
+
+        public Derived setRankBy(PlaceListOrder rankBy) {
+            url.put("rankby", rankBy.name());
+            return (Derived) this;
+        }
+
+        public Derived setOpenNow(boolean openNow) {
+            url.put("opennow", openNow);
+            return (Derived) this;
+        }
+
+        public Derived setPageToken(String pageToken) {
+            url.put("pagetoken", pageToken);
+            return (Derived) this;
+        }
+
+        /**
+         * This is experimental and is only available to Places API enterprise customers.
+         */
+        public Derived setZagatSelected(boolean zagatSelected) {
+            url.put("zagatselected", zagatSelected);
+            return (Derived) this;
+        }
+
+        /**
+         * @param types List of types listed in https://developers.google.com/places/documentation/supported_types
+         */
+        public Derived setTypes(String... types) {
+            url.put("types", TextUtils.join("|", types));
+            return (Derived) this;
+        }
+
+
+        public Derived setErrorListener(final ErrorListener listener) {
+            errorListener = listener;
+            return (Derived) this;
+        }
+
+        public Derived get(final ResultListener<ResultType> listener) {
+            new AsyncTask<GenericUrl, Void, ResultType>() {
+                @Override
+                protected ResultType doInBackground(GenericUrl... params) {
+                    assert params[0] != null;
+                    final GenericUrl url = params[0];
+                    try {
+                        return (ResultType) GooglePlaces.this.get(url).parseAs(getResultTypeClass());
+                    } catch (Exception e) {
+                        return createErrorResult(new RequestError("Failed to request " + url.getFragment(), e));
+                    }
+                }
+
+                @Override
+                protected void onPostExecute(ResultType searchResult) {
+                    if (searchResult.isSuccess()) {
+                        listener.onComplete(searchResult);
+                    } else {
+                        errorListener.onError(searchResult.getError());
+                    }
+                }
+            }.execute(url);
+            return (Derived) this;
+        }
+
+        abstract protected Class<?> getResultTypeClass();
+
+        abstract protected ResultType createErrorResult(RequestError error);
+    }
+
+
+    public class NearbySearchBuilder extends SearchBuilderBase<NearbySearchBuilder, SearchResult> {
+        /**
+         * Creates a request builder for "nearby search". Its parameters are mandatory.
+         */
+        public NearbySearchBuilder(double latitude, double longitude, double radiusInMeter, boolean sensor) {
+            super(new GenericUrl(apiBase + NEARBY_SEARCH_PATH));
+
+            url.put("location", latitude + "," + longitude);
+            url.put("radius", radiusInMeter);
+            url.put("sensor", sensor);
+        }
+
+        public NearbySearchBuilder setKeyword(String keyword) {
+            url.put("keyword", keyword);
+            return this;
+        }
+
+        @Override
+        protected Class<?> getResultTypeClass() {
+            return SearchResult.class;
+        }
+
+        @Override
+        protected SearchResult createErrorResult(RequestError error) {
+            SearchResult errorResult = new SearchResult();
+            errorResult.setError(error);
+            return errorResult;
+        }
+    }
+
+    public class TextSearchBuilder extends SearchBuilderBase<TextSearchBuilder, SearchResult> {
+        /**
+         * Creates a request builder for "text search". Its parameters are mandatory.
+         */
+        public TextSearchBuilder(String query, boolean sensor) {
+            super(new GenericUrl(apiBase + TEXT_SEARCH_PATH));
+            url.put("query", query);
+            url.put("sensor", sensor);
+        }
+
+        public TextSearchBuilder setLocation(double latitude, double longitude) {
+            url.put("location", latitude + "," + longitude);
+            return this;
+        }
+
+        public TextSearchBuilder setRadius(double radiusInMeter) {
+            url.put("radius", radiusInMeter);
+            return this;
+        }
+
+        @Override
+        protected Class<?> getResultTypeClass() {
+            return SearchResult.class;
+        }
+
+        @Override
+        protected SearchResult createErrorResult(RequestError error) {
+            SearchResult errorResult = new SearchResult();
+            errorResult.setError(error);
+            return errorResult;
+        }
+    }
+
+
+    public NearbySearchBuilder nearBySearch(double latitude, double longitude, double radiusInMeter, boolean sensor) {
+        return new NearbySearchBuilder(latitude, longitude, radiusInMeter, sensor);
+    }
+
+    public TextSearchBuilder textSearchBuilder(String query, boolean sensor) {
+        return new TextSearchBuilder(query, sensor);
     }
 
     private HttpResponse get(GenericUrl url) throws IOException {
@@ -73,11 +235,25 @@ public class GooglePlaces {
         return request.execute();
     }
 
-    public static class PlaceList implements Serializable {
-        @Key
-        public String status;
+    public interface ResultListener<T> {
+        void onComplete(T result);
+    }
 
-        @Key
-        public List<Place> results;
+    public interface ErrorListener {
+        void onError(RequestError error);
+    }
+
+    // default ErrorListener which throws RuntimeException on errors
+    private static class DefaultErrorListener implements ErrorListener {
+        private static DefaultErrorListener instance = new DefaultErrorListener();
+
+        public static DefaultErrorListener getInstance() {
+            return instance;
+        }
+
+        @Override
+        public void onError(RequestError error) {
+            throw new RuntimeException("Uncaught RequestError", error);
+        }
     }
 }

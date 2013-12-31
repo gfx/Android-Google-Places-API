@@ -5,6 +5,7 @@ import com.google.api.client.util.Key;
 import java.io.Serializable;
 import java.util.List;
 
+// https://developers.google.com/places/documentation/search
 public class Place implements Serializable {
     @Key
     public String id;
