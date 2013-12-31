@@ -10,7 +10,7 @@ before_install:
     - source ~/.android-sdk-installer/env
     - export TERM=dumb # to get clean gradle output
     # Create and start emulator
-    - echo no | android create avd --force -n test -t 'Google Inc.:Google APIs:19'
+    - echo no | android create avd --force -n test -t 'Google Inc.:Google APIs:17'
     - emulator -avd test -no-skin -no-audio -no-window &
     - wait_for_emulator
 script:
