@@ -33,8 +33,3 @@ dependencies {
     compile "com.android.support:appcompat-v7:$supportPackageVersion"
     compile "com.google.api-client:google-api-client-android:$googleApiClientVersion"
 }
-
-if (!project.hasProperty('GoogleApiKey')) {
-    throw new StopActionException("GoogleApiKey must be defined in gradle.properties");
-}
-initApiKeys(project, ["google_api_key": GoogleApiKey])

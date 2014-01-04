@@ -1,7 +1,10 @@
 package com.github.gfx.googleplaces;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.google.api.client.extensions.android.json.AndroidJsonFactory;
 import com.google.api.client.http.GenericUrl;
@@ -15,24 +18,32 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.JsonObjectParser;
 
 import java.io.IOException;
+import java.util.Locale;
+import java.util.Map;
 
 /**
+ * Google Places API client class
+ *
  * @see <a href="https://developers.google.com/places/documentation/search">Google Places API</a>
  */
+@SuppressWarnings({"unchecked", "unused"})
 public class GooglePlaces {
     // Google Places serach url's
     // See https://developers.google.com/places/documentation/search for details
     private static final String API_BASE = "https://maps.googleapis.com/maps/api/place";
-    private static final String NEARBY_SEARCH_PATH = "/nearbysearch/json?";
-    private static final String RADAR_SEARCH_PATH = "/radarsearch/json?";
-    private static final String TEXT_SEARCH_PATH = "/textsearch/json?";
+    private static final String NEARBY_SEARCH_PATH = "/nearbysearch/json";
+    private static final String RADAR_SEARCH_PATH = "/radarsearch/json";
+    private static final String TEXT_SEARCH_PATH = "/textsearch/json";
     private static final String DETAILS_PATH = "/details/json?";
 
     private String userAgent = "Android Google Places Client/1.0";
     private String apiBase = API_BASE;
+    private String language = Locale.getDefault().getLanguage();
 
     private final String apiKey;
     private final HttpRequestFactory requestFactory;
+
+    private Map<String, Bitmap> cache = new LruMap<>(8);
 
     public GooglePlaces(String googleApiKey) {
         this(googleApiKey, new NetHttpTransport());
@@ -53,6 +64,17 @@ public class GooglePlaces {
         });
     }
 
+    /**
+     * @param language A language code listed in https://spreadsheets.google.com/pub?key=p9pdwsai2hDMsLkXsoM05KQ&gid=1
+     */
+    public GooglePlaces setLanguage(String language) {
+        this.language = language;
+        return this;
+    }
+
+    public String getLanguage() {
+        return language;
+    }
 
     private abstract class SearchBuilderBase<Derived extends SearchBuilderBase, ResultType extends ResultBase> {
         protected final GenericUrl url;
@@ -127,15 +149,19 @@ public class GooglePlaces {
         }
 
         public Derived get(final ResultListener<ResultType> listener) {
-            new AsyncTask<GenericUrl, Void, ResultType>() {
+            new AsyncTask<Void, Void, ResultType>() {
                 @Override
-                protected ResultType doInBackground(GenericUrl... params) {
-                    assert params[0] != null;
-                    final GenericUrl url = params[0];
+                protected ResultType doInBackground(Void... params) {
+                    HttpRequest request = null;
                     try {
-                        return (ResultType) GooglePlaces.this.get(url).parseAs(getResultTypeClass());
+                        request = GooglePlaces.this.buildGetRequest(url);
+                        final ResultType result = (ResultType) request.execute().parseAs(getResultTypeClass());
+                        if (!result.isSuccess()) {
+                            result.setError(new RequestError("Request failure", null, request));
+                        }
+                        return result;
                     } catch (Exception e) {
-                        return createErrorResult(new RequestError("Failed to request " + url.getRawPath(), e));
+                        return createErrorResult(new RequestError("Failed to request " + url.getRawPath(), e, request));
                     }
                 }
 
@@ -147,7 +173,7 @@ public class GooglePlaces {
                         errorListener.onError(searchResult.getError());
                     }
                 }
-            }.execute(url);
+            }.execute((Void) null);
             return (Derived) this;
         }
 
@@ -225,7 +251,7 @@ public class GooglePlaces {
         /**
          * Creates a request builder for "radar search". Its parameters are mandatory.
          */
-        public RadarSearchBuilder(double latitude, double longitude,  double radiusInMeter, boolean sensor) {
+        public RadarSearchBuilder(double latitude, double longitude, double radiusInMeter, boolean sensor) {
             super(new GenericUrl(apiBase + RADAR_SEARCH_PATH));
 
             url.put("location", latitude + "," + longitude);
@@ -263,10 +289,49 @@ public class GooglePlaces {
         return new RadarSearchBuilder(latitude, longitude, radiusInMeter, sensor);
     }
 
-    private HttpResponse get(GenericUrl url) throws IOException {
+    private HttpRequest buildGetRequest(GenericUrl url) throws IOException {
         final HttpRequest request = requestFactory.buildGetRequest(url);
         request.getUrl().put("key", apiKey);
-        return request.execute();
+        request.getUrl().put("language", language); // it can be overridden
+        return request;
+    }
+
+    public interface OnGetIconListener {
+        void onGetIcon(Bitmap bitmap);
+    }
+
+    public void getIconBitmap(final Place place, final OnGetIconListener listener) {
+        if (place.icon != null) {
+            final Bitmap cached = cache.get(place.icon);
+            if (cached != null) {
+                listener.onGetIcon(Bitmap.createBitmap(cached));
+                return;
+            }
+
+            new AsyncTask<Void, Void, Bitmap>() {
+                @Override
+                protected Bitmap doInBackground(Void... params) {
+                    try {
+                        final HttpRequest request = requestFactory.buildGetRequest(new GenericUrl(place.icon));
+                        final HttpResponse response = request.execute();
+                        if (response.isSuccessStatusCode()) {
+                            return BitmapFactory.decodeStream(response.getContent());
+                        }
+                    } catch (IOException e) {
+                        Log.w("GooglePlaces", e);
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void onPostExecute(Bitmap bitmap) {
+                    if (bitmap != null) {
+                        cache.put(place.icon, Bitmap.createBitmap(bitmap));
+                        listener.onGetIcon(bitmap);
+                    }
+                }
+            }.execute((Void) null);
+        }
     }
 
     public interface ResultListener<T> {

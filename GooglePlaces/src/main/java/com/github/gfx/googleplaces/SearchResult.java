@@ -9,7 +9,7 @@ import java.util.List;
 // https://developers.google.com/places/documentation/search
 public class SearchResult implements Serializable, Iterable<Place>, ResultBase {
     public static final String OK = "OK";
-    public static final String ZERO_REZULTS = "ZERO_RESULTS";
+    public static final String ZERO_RESULTS = "ZERO_RESULTS";
     public static final String OVER_QUERY_LIMIT = "OVER_QUERY_LIMIT";
     public static final String REQUEST_DENIED = "REQUEST_DENIED";
     public static final String INVALID_REQUEST = "INVALID_REQUEST";
@@ -49,13 +49,14 @@ public class SearchResult implements Serializable, Iterable<Place>, ResultBase {
             return error;
         }
         else if (! OK.equals(status)) {
-            return new RequestError(status, null);
+            return new RequestError(status, null, null);
         }
         else {
             return null;
         }
     }
 
+    @Override
     public void setError(RequestError error) {
         this.error = error;
     }

@@ -1,5 +1,5 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
-apply from: rootProject.file('gradle/util.gradle')
+apply from: rootProject.file('gradle/gradle-android-utils/build.gradle')
 
 buildscript {
     repositories {
@@ -24,9 +24,20 @@ project.ext {
 
 initSdkDir();
 
-if (! project.file("gradle.properties").exists()) {
-    writeProperties(project.file("gradle.properties"), [ "GoogleApiKey" : "YOUR_API_KEY_HERE" ])
-    project.ext {
-        GoogleApiKey = "YOUR_API_KEY_HERE"
+def writeDummyGradleProperties() {
+    def gradlePropsFile = file("gradle.properties")
+
+    if (! gradlePropsFile.exists()) {
+        gradlePropsFile.write(file("gradle.properties.sample").readBytes())
+
+        gradlePropsFile.withInputStream { stream ->
+            def props = new Properties()
+            props.load(stream)
+            props.each { key, value ->
+                project.ext.set(key, value)
+            }
+        }
     }
 }
+
+writeDummyGradleProperties()
