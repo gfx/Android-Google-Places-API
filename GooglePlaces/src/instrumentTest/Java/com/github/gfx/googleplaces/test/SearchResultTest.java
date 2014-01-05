@@ -102,7 +102,7 @@ public class SearchResultTest extends AndroidTestCase {
     public void testTextSearch() throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
 
-        client.textSearchBuilder("foo", false)
+        client.textSearch("foo", false)
             .setOpenNow(true)
             .setLanguage("ja")
             .setMinPrice(0)
@@ -124,7 +124,7 @@ public class SearchResultTest extends AndroidTestCase {
     public void testRadarSearch() throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(1);
 
-        client.radarSearchBuilder(0, 0, 100, false)
+        client.radarSearch(0, 0, 100, false)
             .setOpenNow(true)
             .setLanguage("ja")
             .setMinPrice(0)

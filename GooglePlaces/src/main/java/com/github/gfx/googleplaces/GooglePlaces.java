@@ -34,7 +34,7 @@ public class GooglePlaces {
     private static final String NEARBY_SEARCH_PATH = "/nearbysearch/json";
     private static final String RADAR_SEARCH_PATH = "/radarsearch/json";
     private static final String TEXT_SEARCH_PATH = "/textsearch/json";
-    private static final String DETAILS_PATH = "/details/json?";
+    private static final String DETAILS_PATH = "/details/json";
 
     private String userAgent = "Android Google Places Client/1.0";
     private String apiBase = API_BASE;
@@ -76,12 +76,12 @@ public class GooglePlaces {
         return language;
     }
 
-    private abstract class SearchBuilderBase<Derived extends SearchBuilderBase, ResultType extends ResultBase> {
+    private abstract class RequestBuilderBase<Derived extends RequestBuilderBase, ResultType extends ResultBase> {
         protected final GenericUrl url;
 
         protected ErrorListener errorListener = DefaultErrorListener.getInstance();
 
-        SearchBuilderBase(GenericUrl url) {
+        public RequestBuilderBase(GenericUrl url) {
             this.url = url;
         }
 
@@ -89,59 +89,6 @@ public class GooglePlaces {
             url.put("language", language);
             return (Derived) this;
         }
-
-        public Derived setMinPrice(int minPrice) {
-            assert 0 <= minPrice && minPrice <= 4;
-            url.put("mminprice", minPrice);
-            return (Derived) this;
-        }
-
-        public Derived setMaxPrice(int maxPrice) {
-            assert 0 <= maxPrice && maxPrice <= 4;
-            url.put("maxprice", maxPrice);
-            return (Derived) this;
-        }
-
-
-        /**
-         * One or more terms to be matched against the names of Places, separated with a space character. Results will be restricted to those containing the passed name values. Note that a Place may have additional names associated with it, beyond its listed name. The API will try to match the passed name value against all of these names; as a result, Places may be returned in the results whose listed names do not match the search term, but whose associated names do.
-         */
-        public Derived setName(String name) {
-            url.put("name", name);
-            return (Derived) this;
-        }
-
-        public Derived setRankBy(PlaceListOrder rankBy) {
-            url.put("rankby", rankBy.name());
-            return (Derived) this;
-        }
-
-        public Derived setOpenNow(boolean openNow) {
-            url.put("opennow", openNow);
-            return (Derived) this;
-        }
-
-        public Derived setPageToken(String pageToken) {
-            url.put("pagetoken", pageToken);
-            return (Derived) this;
-        }
-
-        /**
-         * This is experimental and is only available to Places API enterprise customers.
-         */
-        public Derived setZagatSelected(boolean zagatSelected) {
-            url.put("zagatselected", zagatSelected);
-            return (Derived) this;
-        }
-
-        /**
-         * @param types List of types listed in https://developers.google.com/places/documentation/supported_types
-         */
-        public Derived setTypes(String... types) {
-            url.put("types", TextUtils.join("|", types));
-            return (Derived) this;
-        }
-
 
         public Derived setErrorListener(final ErrorListener listener) {
             errorListener = listener;
@@ -182,8 +129,78 @@ public class GooglePlaces {
         abstract protected ResultType createErrorResult(RequestError error);
     }
 
+    private abstract class SearchBuilderBase<Derived extends SearchBuilderBase> extends RequestBuilderBase<Derived, SearchResult> {
 
-    public class NearbySearchBuilder extends SearchBuilderBase<NearbySearchBuilder, SearchResult> {
+        SearchBuilderBase(GenericUrl url) {
+            super(url);
+        }
+
+        public Derived setMinPrice(int minPrice) {
+            assert 0 <= minPrice && minPrice <= 4;
+            url.put("mminprice", minPrice);
+            return (Derived) this;
+        }
+
+        public Derived setMaxPrice(int maxPrice) {
+            assert 0 <= maxPrice && maxPrice <= 4;
+            url.put("maxprice", maxPrice);
+            return (Derived) this;
+        }
+
+        /**
+         * One or more terms to be matched against the names of Places, separated with a space character. Results will be restricted to those containing the passed name values. Note that a Place may have additional names associated with it, beyond its listed name. The API will try to match the passed name value against all of these names; as a result, Places may be returned in the results whose listed names do not match the search term, but whose associated names do.
+         */
+        public Derived setName(String name) {
+            url.put("name", name);
+            return (Derived) this;
+        }
+
+        public Derived setRankBy(PlaceListOrder rankBy) {
+            url.put("rankby", rankBy.name());
+            return (Derived) this;
+        }
+
+        public Derived setOpenNow(boolean openNow) {
+            url.put("opennow", openNow);
+            return (Derived) this;
+        }
+
+        public Derived setPageToken(String pageToken) {
+            url.put("pagetoken", pageToken);
+            return (Derived) this;
+        }
+
+        /**
+         * This is experimental and is only available to Places API enterprise customers.
+         */
+        public Derived setZagatSelected(boolean zagatSelected) {
+            url.put("zagatselected", zagatSelected);
+            return (Derived) this;
+        }
+
+        /**
+         * @param types List of types listed in https://developers.google.com/places/documentation/supported_types
+         */
+        public Derived setTypes(String... types) {
+            url.put("types", TextUtils.join("|", types));
+            return (Derived) this;
+        }
+
+        @Override
+        protected Class<?> getResultTypeClass() {
+            return SearchResult.class;
+        }
+
+        @Override
+        protected SearchResult createErrorResult(RequestError error) {
+            SearchResult errorResult = new SearchResult();
+            errorResult.setError(error);
+            return errorResult;
+        }
+    }
+
+
+    public class NearbySearchBuilder extends SearchBuilderBase<NearbySearchBuilder> {
         /**
          * Creates a request builder for "nearby search". Its parameters are mandatory.
          */
@@ -213,7 +230,7 @@ public class GooglePlaces {
         }
     }
 
-    public class TextSearchBuilder extends SearchBuilderBase<TextSearchBuilder, SearchResult> {
+    public class TextSearchBuilder extends SearchBuilderBase<TextSearchBuilder> {
         /**
          * Creates a request builder for "text search". Its parameters are mandatory.
          */
@@ -232,22 +249,10 @@ public class GooglePlaces {
             url.put("radius", radiusInMeter);
             return this;
         }
-
-        @Override
-        protected Class<?> getResultTypeClass() {
-            return SearchResult.class;
-        }
-
-        @Override
-        protected SearchResult createErrorResult(RequestError error) {
-            SearchResult errorResult = new SearchResult();
-            errorResult.setError(error);
-            return errorResult;
-        }
     }
 
 
-    public class RadarSearchBuilder extends SearchBuilderBase<RadarSearchBuilder, SearchResult> {
+    public class RadarSearchBuilder extends SearchBuilderBase<RadarSearchBuilder> {
         /**
          * Creates a request builder for "radar search". Its parameters are mandatory.
          */
@@ -263,6 +268,15 @@ public class GooglePlaces {
             url.put("keyword", keyword);
             return this;
         }
+    }
+
+    public class DetailBuilder extends RequestBuilderBase<DetailBuilder, PlaceDetail> {
+        DetailBuilder(String reference, boolean sensor) {
+            super(new GenericUrl(apiBase + DETAILS_PATH));
+
+            url.put("reference", reference);
+            url.put("sensor", sensor);
+        }
 
         @Override
         protected Class<?> getResultTypeClass() {
@@ -270,8 +284,8 @@ public class GooglePlaces {
         }
 
         @Override
-        protected SearchResult createErrorResult(RequestError error) {
-            SearchResult errorResult = new SearchResult();
+        protected PlaceDetail createErrorResult(RequestError error) {
+            PlaceDetail errorResult = new PlaceDetail();
             errorResult.setError(error);
             return errorResult;
         }
@@ -281,12 +295,16 @@ public class GooglePlaces {
         return new NearbySearchBuilder(latitude, longitude, radiusInMeter, sensor);
     }
 
-    public TextSearchBuilder textSearchBuilder(String query, boolean sensor) {
+    public TextSearchBuilder textSearch(String query, boolean sensor) {
         return new TextSearchBuilder(query, sensor);
     }
 
-    public RadarSearchBuilder radarSearchBuilder(double latitude, double longitude, double radiusInMeter, boolean sensor) {
+    public RadarSearchBuilder radarSearch(double latitude, double longitude, double radiusInMeter, boolean sensor) {
         return new RadarSearchBuilder(latitude, longitude, radiusInMeter, sensor);
+    }
+
+    public DetailBuilder detail(String reference, boolean sensor) {
+        return new DetailBuilder(reference, sensor);
     }
 
     private HttpRequest buildGetRequest(GenericUrl url) throws IOException {
@@ -300,6 +318,25 @@ public class GooglePlaces {
         void onGetIcon(Bitmap bitmap);
     }
 
+    /**
+     * Get icon bitmap from <code>place.icon</code> in the main thread.
+     */
+    public Bitmap getIconBitmap(final Place place) throws IOException {
+        assert place != null;
+
+        if (place.icon != null) {
+            final HttpRequest request = requestFactory.buildGetRequest(new GenericUrl(place.icon));
+            final HttpResponse response = request.execute();
+            if (response.isSuccessStatusCode()) {
+                return BitmapFactory.decodeStream(response.getContent());
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get icon bitomap from <code>place.icon</code> in background.
+     */
     public void getIconBitmap(final Place place, final OnGetIconListener listener) {
         if (place.icon != null) {
             final Bitmap cached = cache.get(place.icon);
@@ -312,11 +349,7 @@ public class GooglePlaces {
                 @Override
                 protected Bitmap doInBackground(Void... params) {
                     try {
-                        final HttpRequest request = requestFactory.buildGetRequest(new GenericUrl(place.icon));
-                        final HttpResponse response = request.execute();
-                        if (response.isSuccessStatusCode()) {
-                            return BitmapFactory.decodeStream(response.getContent());
-                        }
+                        return getIconBitmap(place);
                     } catch (IOException e) {
                         Log.w("GooglePlaces", e);
                     }

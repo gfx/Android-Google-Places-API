@@ -7,6 +7,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.ListView;
@@ -59,7 +60,7 @@ public class ItemDetailFragment extends Fragment {
 
             switch (apiType) {
                 case TEXT_SEARCH:
-                    places.textSearchBuilder("寿司", false).get(new GooglePlaces.ResultListener<SearchResult>() {
+                    places.textSearch("寿司", false).get(new GooglePlaces.ResultListener<SearchResult>() {
                         @Override
                         public void onComplete(SearchResult result) {
                             adapter.setPlaceList(result.results);
@@ -76,7 +77,7 @@ public class ItemDetailFragment extends Fragment {
                     });
                     break;
                 case RADAR_SEARCH:
-                    places.radarSearchBuilder(35.68, 139.76, 500, false).get(new GooglePlaces.ResultListener<SearchResult>() {
+                    places.radarSearch(35.68, 139.76, 500, false).get(new GooglePlaces.ResultListener<SearchResult>() {
                         @Override
                         public void onComplete(SearchResult result) {
                             adapter.setPlaceList(result.results);
@@ -102,66 +103,63 @@ public class ItemDetailFragment extends Fragment {
         return rootView;
     }
 
-    private class PlaceListAdapter extends BaseAdapter {
-        private List<Place> placeList;
-
+    private class PlaceListAdapter extends ArrayAdapter<Place> {
         public PlaceListAdapter() {
-            this.placeList = new ArrayList<>();
+            super(getActivity(), 0);
         }
 
         public void setPlaceList(List<Place> placeList) {
-            this.placeList = placeList;
+            this.clear();
+            this.addAll(placeList);
             this.notifyDataSetChanged();
-        }
-
-        @Override
-        public int getCount() {
-            return this.placeList.size();
-        }
-
-        @Override
-        public Place getItem(int position) {
-            return this.placeList.get(position);
-        }
-
-        @Override
-        public long getItemId(int position) {
-            return position;
         }
 
         @Override
         public View getView(int position, View convertView, ViewGroup viewGroup) {
             if (convertView == null) {
                 convertView = View.inflate(getActivity(), R.layout.cell_place, null);
+
+                convertView.setTag(new ViewHolder(convertView));
             }
+
+            final ViewHolder viewHolder = (ViewHolder) convertView.getTag();
 
             final Place place = getItem(position);
 
-            final ImageView iconView = (ImageView) convertView.findViewById(R.id.icon);
-            final TextView nameView = (TextView) convertView.findViewById(R.id.name);
-            final TextView addressView = (TextView) convertView.findViewById(R.id.address);
-
-            iconView.setImageResource(R.drawable.ic_noimage);
+            viewHolder.icon.setImageResource(R.drawable.ic_noimage);
             places.getIconBitmap(place, new GooglePlaces.OnGetIconListener() {
                 @Override
                 public void onGetIcon(Bitmap bitmap) {
-                    iconView.setImageBitmap(bitmap);
+                    viewHolder.icon.setImageBitmap(bitmap);
                 }
             });
 
             if (place.name != null) {
-                nameView.setText(place.name);
+                viewHolder.name.setText(place.name);
             }
 
             if (place.formatted_address != null) {
-                addressView.setText(place.formatted_address);
+                viewHolder.address.setText(place.formatted_address);
             } else if (place.vicinity != null) {
-                addressView.setText(place.vicinity);
+                viewHolder.address.setText(place.vicinity);
             } else if (place.geometry != null) {
-                addressView.setText(place.geometry.location.lat + "," + place.geometry.location.lng);
+                viewHolder.address.setText(place.geometry.location.lat + "," + place.geometry.location.lng);
             }
-
             return convertView;
+        }
+
+        public class ViewHolder {
+            public final ImageView icon;
+            public final TextView name;
+            public final TextView address;
+            public final View root;
+
+            public ViewHolder(View root) {
+                icon = (ImageView) root.findViewById(R.id.icon);
+                name = (TextView) root.findViewById(R.id.name);
+                address = (TextView) root.findViewById(R.id.address);
+                this.root = root;
+            }
         }
     }
 }

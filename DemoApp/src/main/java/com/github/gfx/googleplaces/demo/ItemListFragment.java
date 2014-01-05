@@ -20,8 +20,8 @@ import java.util.List;
  * interface.
  */
 public class ItemListFragment extends ListFragment {
-    private static final List<ApiType> symbols = Arrays.asList(ApiType.NEARBY_SEARCH, ApiType.TEXT_SEARCH, ApiType.RADAR_SEARCH, ApiType.DETAILS);
-    private static final List<String> titles = Arrays.asList("nearby search", "text search", "radar search", "details");
+    private static final List<ApiType> symbols = Arrays.asList(ApiType.NEARBY_SEARCH, ApiType.TEXT_SEARCH, ApiType.DETAILS);
+    private static final List<String> titles = Arrays.asList("nearby search", "text search", "details");
 
     /**
      * The serialization (saved instance state) Bundle key representing the
